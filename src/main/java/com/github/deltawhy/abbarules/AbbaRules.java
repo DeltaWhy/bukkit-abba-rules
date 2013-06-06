@@ -15,6 +15,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Score;
@@ -28,10 +30,16 @@ public class AbbaRules extends JavaPlugin implements Listener {
     boolean ready = false;
     boolean started = false;
 
+    BukkitTask countdownTask;
+    BukkitTask timerTask;
+
     public void onDisable() {
         if (obj != null) {
             obj.unregister();
+            obj = null;
         }
+        if (countdownTask != null) countdownTask.cancel();
+        if (timerTask != null) timerTask.cancel();
     }
 
     public void onEnable() {
@@ -67,7 +75,7 @@ public class AbbaRules extends JavaPlugin implements Listener {
                 addPlayer((Player)sender);
             } else if (args[0].equalsIgnoreCase("start")
                     && sender.getName().equalsIgnoreCase(playerList.get(0))) {
-                startGame((Player)sender);
+                startGame((Player) sender);
             } else if (args[0].equalsIgnoreCase("stop")
                     && sender.getName().equalsIgnoreCase(playerList.get(0))) {
                 stopGame();
@@ -87,6 +95,7 @@ public class AbbaRules extends JavaPlugin implements Listener {
         if (sb == null) sb = Bukkit.getScoreboardManager().getMainScoreboard();
         if (obj != null) {
             obj.unregister();
+            obj = null;
         }
         obj = sb.registerNewObjective("abba_score", "dummy");
         obj.setDisplayName("Score");
@@ -107,7 +116,13 @@ public class AbbaRules extends JavaPlugin implements Listener {
             player.sendMessage(ChatColor.RED + "There is no game to end.");
             return;
         }
-        if (obj != null) obj.unregister();
+        if (started) {
+            stopGame();
+        }
+        if (obj != null) {
+            obj.unregister();
+            obj = null;
+        }
         ready = false;
         started = false;
     }
@@ -128,8 +143,36 @@ public class AbbaRules extends JavaPlugin implements Listener {
             player.sendMessage(ChatColor.RED + "There is no game to start.");
             return;
         }
-        started = true;
-        Bukkit.broadcastMessage(ChatColor.GOLD + "Let the games begin!");
+        if (countdownTask != null) countdownTask.cancel();
+        countdownTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
+            int time = 3;
+            public void run() {
+                if (time > 0) {
+                    Bukkit.broadcastMessage(ChatColor.GOLD + Integer.toString(time));
+                    time--;
+                } else {
+                    started = true;
+                    Bukkit.broadcastMessage(ChatColor.GOLD + "Let the games begin!");
+                    countdownTask.cancel();
+                    countdownTask = null;
+                    startTimer();
+                }
+            }
+        }, 0, 20);
+    }
+
+    public void startTimer() {
+        timerTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
+            int time = 1200;
+            public void run() {
+                if (time > 0) {
+                    obj.getScore(Bukkit.getOfflinePlayer("Time")).setScore(time);
+                    time--;
+                } else {
+                    stopGame();
+                }
+            }
+        }, 0, 20);
     }
 
     public void stopGame() {
@@ -137,7 +180,16 @@ public class AbbaRules extends JavaPlugin implements Listener {
             return;
         }
         started = false;
+        if (countdownTask != null) {
+            countdownTask.cancel();
+            countdownTask = null;
+        }
+        if (timerTask != null) {
+            timerTask.cancel();
+            timerTask = null;
+        }
         Bukkit.broadcastMessage(ChatColor.GOLD + "Time's up!");
+        sb.resetScores(Bukkit.getOfflinePlayer("Time"));
     }
 
     @EventHandler
