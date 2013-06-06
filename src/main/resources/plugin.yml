@@ -5,3 +5,6 @@ main: com.github.deltawhy.abbarules.AbbaRules
 name: AbbaRules
 startup: postworld
 version: '1.0'
+commands:
+  abba:
+    description: Play ABBA rules caving.
