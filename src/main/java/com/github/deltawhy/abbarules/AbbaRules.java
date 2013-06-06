@@ -33,6 +33,8 @@ public class AbbaRules extends JavaPlugin implements Listener {
     BukkitTask countdownTask;
     BukkitTask timerTask;
 
+    int gameLength = 1200;
+
     public void onDisable() {
         if (obj != null) {
             obj.unregister();
@@ -74,12 +76,24 @@ public class AbbaRules extends JavaPlugin implements Listener {
             } else if (args[0].equalsIgnoreCase("join")) {
                 addPlayer((Player)sender);
             } else if (args[0].equalsIgnoreCase("start")
+                    && !playerList.isEmpty()
                     && sender.getName().equalsIgnoreCase(playerList.get(0))) {
+                if (args.length > 1) {
+                    try {
+                        gameLength = Integer.parseInt(args[1]) * 60;
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage(ChatColor.RED + "/abba start [time]");
+                    }
+                } else {
+                    gameLength = 20*60;
+                }
                 startGame((Player) sender);
             } else if (args[0].equalsIgnoreCase("stop")
+                    && !playerList.isEmpty()
                     && sender.getName().equalsIgnoreCase(playerList.get(0))) {
                 stopGame();
             } else if (args[0].equalsIgnoreCase("reset")
+                    && !playerList.isEmpty()
                     && sender.getName().equalsIgnoreCase(playerList.get(0))) {
                 resetGame((Player)sender);
             } else {
@@ -163,7 +177,7 @@ public class AbbaRules extends JavaPlugin implements Listener {
 
     public void startTimer() {
         timerTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
-            int time = 1200;
+            int time = gameLength;
             public void run() {
                 if (time > 0) {
                     obj.getScore(Bukkit.getOfflinePlayer("Time")).setScore(time);
