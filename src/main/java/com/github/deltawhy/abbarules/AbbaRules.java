@@ -25,6 +25,8 @@ public class AbbaRules extends JavaPlugin implements Listener {
     Objective obj;
     List<String> playerList;
     Map<Material, Integer> blockValues;
+    boolean ready = false;
+    boolean started = false;
 
     public void onDisable() {
         if (obj != null) {
@@ -47,27 +49,33 @@ public class AbbaRules extends JavaPlugin implements Listener {
     }
 
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        String usage = "/abba create: Start a game\n" +
+                "/abba join: Join a game\n" +
+                "/abba start: Start the timer\n" +
+                "/abba stop: Stop the timer\n" +
+                "/abba reset: End a game";
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can't be run from the console.");
             return false;
         }
         if (label.equals("abba")) {
             if (args.length == 0) {
-                sender.sendMessage("/abba: Play ABBA rules caving\n" +
-                        "  /abba create: Start a game\n" +
-                        "  /abba join: Join a game\n" +
-                        "  /abba start: Start the timer");
+                sender.sendMessage(usage);
             } else if (args[0].equalsIgnoreCase("create")) {
                 createGame((Player)sender);
             } else if (args[0].equalsIgnoreCase("join")) {
                 addPlayer((Player)sender);
-            } else if (args[0].equalsIgnoreCase("start")) {
-                startGame();
+            } else if (args[0].equalsIgnoreCase("start")
+                    && sender.getName().equalsIgnoreCase(playerList.get(0))) {
+                startGame((Player)sender);
+            } else if (args[0].equalsIgnoreCase("stop")
+                    && sender.getName().equalsIgnoreCase(playerList.get(0))) {
+                stopGame();
+            } else if (args[0].equalsIgnoreCase("reset")
+                    && sender.getName().equalsIgnoreCase(playerList.get(0))) {
+                resetGame((Player)sender);
             } else {
-                sender.sendMessage("/abba: Play ABBA rules caving\n" +
-                        "\t/abba create: Start a game\n" +
-                        "\t/abba join: Join a game\n" +
-                        "\t/abba start: Start the timer");
+                sender.sendMessage(usage);
             }
             return true;
         } else {
@@ -85,25 +93,56 @@ public class AbbaRules extends JavaPlugin implements Listener {
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         playerList.clear();
+        ready = true;
+        started = false;
 
         Bukkit.broadcastMessage(ChatColor.GOLD + player.getName() + " has started a game of ABBA rules caving!" +
                 " Join the game with /abba join.");
+        player.sendMessage(ChatColor.AQUA + "Once everyone has joined, start the game with /abba start");
         addPlayer(player);
     }
 
+    public void resetGame(Player player) {
+        if (!ready) {
+            player.sendMessage(ChatColor.RED + "There is no game to end.");
+            return;
+        }
+        if (obj != null) obj.unregister();
+        ready = false;
+        started = false;
+    }
+
     public void addPlayer(Player player) {
+        if (!ready) {
+            player.sendMessage(ChatColor.RED + "There is no game to join.");
+            return;
+        }
         OfflinePlayer op = Bukkit.getOfflinePlayer(player.getName());
         obj.getScore(op).setScore(1);
         obj.getScore(op).setScore(0);
         playerList.add(player.getName());
     }
 
-    public void startGame() {
+    public void startGame(Player player) {
+        if (!ready) {
+            player.sendMessage(ChatColor.RED + "There is no game to start.");
+            return;
+        }
+        started = true;
+        Bukkit.broadcastMessage(ChatColor.GOLD + "Let the games begin!");
+    }
 
+    public void stopGame() {
+        if (!started) {
+            return;
+        }
+        started = false;
+        Bukkit.broadcastMessage(ChatColor.GOLD + "Time's up!");
     }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+        if (!started) return;
         Player player = event.getPlayer();
         if (player == null || !playerList.contains(player.getName())) {
             return;
