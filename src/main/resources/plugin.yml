@@ -1,0 +1,7 @@
+author: DeltaWhy
+database: false
+generator: http://dinnerbone.com/minecraft/tools/pluginator/
+main: com.github.deltawhy.abbarules.AbbaRules
+name: AbbaRules
+startup: postworld
+version: '1.0'
